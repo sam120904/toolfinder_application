@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:math' as math;
@@ -17,10 +16,16 @@ class OnnxInference {
   String? _initError;
 
   // OPTIMIZED: Reduced logging to minimize terminal spam
-  static const bool _enableDetailedLogging = false;
+  static const bool _enableDetailedLogging = true;
 
   static const List<String> _classNames = [
-    'OxygenTank', 'NitrogenTank', 'FirstAidBox', 'FireAlarm', 'SafetySwitchPanel', 'EmergencyPhone', 'FireExtinguisher'
+    'OxygenTank',
+    'NitrogenTank',
+    'FirstAidBox',
+    'FireAlarm',
+    'SafetySwitchPanel',
+    'EmergencyPhone',
+    'FireExtinguisher'
   ];
 
   bool get isInitialized => _isInitialized;
@@ -29,66 +34,76 @@ class OnnxInference {
 
   Future<void> initialize() async {
     if (_isInitialized) {
-      if (_enableDetailedLogging) developer.log('🔄 ONNX model already initialized');
+      if (_enableDetailedLogging)
+        developer.log('🔄 ONNX model already initialized');
       return;
     }
 
     try {
-      if (_enableDetailedLogging) developer.log('🚀 Starting ONNX model initialization...');
+      if (_enableDetailedLogging)
+        developer.log('🚀 Starting ONNX model initialization...');
       _initStatus = 'Loading model from assets...';
       _initError = null;
-      
+
       // Load model from assets
       final modelData = await rootBundle.load('assets/best.onnx');
-      if (_enableDetailedLogging) developer.log('📦 Model loaded from assets, size: ${modelData.lengthInBytes} bytes');
-      
+      if (_enableDetailedLogging)
+        developer.log(
+            '📦 Model loaded from assets, size: ${modelData.lengthInBytes} bytes');
+
       if (modelData.lengthInBytes == 0) {
-        throw Exception('Model file is empty. Please ensure best.onnx is in the assets folder.');
+        throw Exception(
+            'Model file is empty. Please ensure best.onnx is in the assets folder.');
       }
-      
+
       _initStatus = 'Copying model to temporary directory...';
-      
+
       // Copy model to temporary directory
       final tempDir = await getTemporaryDirectory();
       final modelFile = File('${tempDir.path}/best.onnx');
       await modelFile.writeAsBytes(modelData.buffer.asUint8List());
-      
-      if (_enableDetailedLogging) developer.log('📁 Model copied to: ${modelFile.path}');
-      
+
+      if (_enableDetailedLogging)
+        developer.log('📁 Model copied to: ${modelFile.path}');
+
       // Verify file exists and has content
       if (!await modelFile.exists()) {
         throw Exception('Model file was not created successfully');
       }
-      
+
       final fileSize = await modelFile.length();
       if (fileSize == 0) {
         throw Exception('Model file is empty after copying');
       }
-      
-      if (_enableDetailedLogging) developer.log('✅ Model file verified, size: $fileSize bytes');
+
+      if (_enableDetailedLogging)
+        developer.log('✅ Model file verified, size: $fileSize bytes');
       _initStatus = 'Creating ONNX session...';
-      
+
       // Initialize ONNX Runtime session with optimized options
       final sessionOptions = OrtSessionOptions();
-      
+
       // OPTIMIZED: Better performance settings
-      sessionOptions.setSessionGraphOptimizationLevel(GraphOptimizationLevel.ortEnableAll);
-      if (_enableDetailedLogging) developer.log('⚙️ Set optimization level to ALL for maximum performance');
-      
+      sessionOptions.setSessionGraphOptimizationLevel(
+          GraphOptimizationLevel.ortEnableAll);
+      if (_enableDetailedLogging)
+        developer
+            .log('⚙️ Set optimization level to ALL for maximum performance');
+
       // Create session
       if (_enableDetailedLogging) developer.log('🔧 Creating ONNX session...');
       _session = OrtSession.fromFile(modelFile, sessionOptions);
-      if (_enableDetailedLogging) developer.log('✅ ONNX session created successfully');
-      
+      if (_enableDetailedLogging)
+        developer.log('✅ ONNX session created successfully');
+
       _initStatus = 'Testing model compatibility...';
-      
+
       // Test the session with a dummy input to verify it works
       await _testSession();
-      
+
       _isInitialized = true;
       _initStatus = 'Model ready for instant inference! ✅';
       developer.log('🎉 ONNX model initialized and ready for instant use!');
-      
     } catch (e, stackTrace) {
       developer.log('❌ Error initializing ONNX model: $e');
       if (_enableDetailedLogging) developer.log('📋 Stack trace: $stackTrace');
@@ -102,37 +117,40 @@ class OnnxInference {
   // Test session with dummy input to verify compatibility
   Future<void> _testSession() async {
     try {
-      if (_enableDetailedLogging) developer.log('🧪 Testing ONNX session with dummy input...');
-      
+      if (_enableDetailedLogging)
+        developer.log('🧪 Testing ONNX session with dummy input...');
+
       // OPTIMIZED: Smaller test tensor to reduce memory allocation
       final dummyPixels = Float32List(1 * 3 * 640 * 640);
       for (int i = 0; i < dummyPixels.length; i++) {
         dummyPixels[i] = 0.5;
       }
-      
+
       final dummyTensor = OrtValueTensor.createTensorWithDataList(
         dummyPixels,
         [1, 3, 640, 640],
       );
-      
-      if (_enableDetailedLogging) developer.log('📊 Created dummy tensor with shape [1, 3, 640, 640]');
-      
+
+      if (_enableDetailedLogging)
+        developer.log('📊 Created dummy tensor with shape [1, 3, 640, 640]');
+
       // Run inference with dummy input
       final inputs = {'images': dummyTensor};
       final runOptions = OrtRunOptions();
-      
+
       if (_enableDetailedLogging) developer.log('🔍 Running test inference...');
       final outputs = _session!.run(runOptions, inputs);
-      
-      if (_enableDetailedLogging) developer.log('✅ Session test successful! Output count: ${outputs.length}');
-      
+
+      if (_enableDetailedLogging)
+        developer
+            .log('✅ Session test successful! Output count: ${outputs.length}');
+
       // Clean up test tensors
       dummyTensor.release();
       runOptions.release();
       for (final output in outputs) {
         output?.release();
       }
-      
     } catch (e, stackTrace) {
       developer.log('❌ Session test failed: $e');
       if (_enableDetailedLogging) developer.log('📋 Stack trace: $stackTrace');
@@ -141,11 +159,13 @@ class OnnxInference {
   }
 
   Future<List<Detection>> runInference(String imagePath) async {
-    if (_enableDetailedLogging) developer.log('🔍 Starting OPTIMIZED inference for image: $imagePath');
-    
+    if (_enableDetailedLogging)
+      developer.log('🔍 Starting OPTIMIZED inference for image: $imagePath');
+
     if (!_isInitialized || _session == null) {
       developer.log('❌ Model not initialized');
-      throw Exception('Model not initialized. Please wait for initialization to complete.');
+      throw Exception(
+          'Model not initialized. Please wait for initialization to complete.');
     }
 
     try {
@@ -154,14 +174,15 @@ class OnnxInference {
       if (!await imageFile.exists()) {
         throw Exception('Image file not found: $imagePath');
       }
-      
+
       final imageBytes = await imageFile.readAsBytes();
       final image = img.decodeImage(imageBytes);
       if (image == null) {
         throw Exception('Failed to decode image');
       }
 
-      if (_enableDetailedLogging) developer.log('🖼️ Image loaded: ${image.width}x${image.height}');
+      if (_enableDetailedLogging)
+        developer.log('🖼️ Image loaded: ${image.width}x${image.height}');
 
       // OPTIMIZED: Resize to 640x640 for YOLOv8
       final resized = img.copyResize(image, width: 640, height: 640);
@@ -174,46 +195,106 @@ class OnnxInference {
       // Run OPTIMIZED inference
       final inputs = {'images': inputTensor};
       final runOptions = OrtRunOptions();
-      
-      if (_enableDetailedLogging) developer.log('🧠 Running OPTIMIZED inference...');
+
+      if (_enableDetailedLogging)
+        developer.log('🧠 Running OPTIMIZED inference...');
       final outputs = _session!.run(runOptions, inputs);
-      if (_enableDetailedLogging) developer.log('✅ Inference completed successfully');
-      
+      if (_enableDetailedLogging)
+        developer.log('✅ Inference completed successfully');
+
       // Process outputs with enhanced filtering
       List<Detection> detections = [];
-      
+
       if (outputs.isNotEmpty && outputs[0] != null) {
         final outputTensor = outputs[0]!.value;
-        if (_enableDetailedLogging) developer.log('📊 Output tensor type: ${outputTensor.runtimeType}');
-        
-        // Handle YOLOv8 output format with enhanced accuracy
-        if (outputTensor is List<List<List<double>>>) {
-          if (_enableDetailedLogging) developer.log('📋 Processing YOLOv8 format with enhanced accuracy');
-          detections = _processYOLOv8OutputEnhanced(outputTensor, image.width, image.height);
+        developer.log('📊 Output tensor type: ${outputTensor.runtimeType}');
+        developer.log('📊 Output tensor: $outputTensor');
+
+        // Handle different output formats
+        if (outputTensor is List) {
+          developer
+              .log('📋 Output is a List with length: ${outputTensor.length}');
+          if (outputTensor.isNotEmpty) {
+            developer
+                .log('📋 First element type: ${outputTensor[0].runtimeType}');
+          }
+
+          // Try to cast to proper format
+          try {
+            if (outputTensor is List<List<List<double>>>) {
+              developer.log(
+                  '📋 Processing YOLOv8 format [batch][features][anchors]');
+              detections = _processYOLOv8OutputEnhanced(
+                  outputTensor, image.width, image.height);
+            } else {
+              // Try to convert to the expected format
+              final converted = _convertOutputFormat(outputTensor);
+              if (converted != null) {
+                developer.log('📋 Converted output format successfully');
+                detections = _processYOLOv8OutputEnhanced(
+                    converted, image.width, image.height);
+              } else {
+                developer.log('❌ Could not convert output format');
+              }
+            }
+          } catch (e) {
+            developer.log('❌ Error processing output: $e');
+            detections = [];
+          }
         } else {
-          if (_enableDetailedLogging) developer.log('❓ Unexpected output format: ${outputTensor.runtimeType}');
+          developer
+              .log('❓ Unexpected output format: ${outputTensor.runtimeType}');
           detections = [];
         }
       } else {
-        if (_enableDetailedLogging) developer.log('❌ No outputs received from model');
+        developer.log('❌ No outputs received from model');
         detections = [];
       }
 
       developer.log('🎯 Found ${detections.length} high-quality detections');
-      
+
       // Clean up tensors
       inputTensor.release();
       runOptions.release();
       for (final output in outputs) {
         output?.release();
       }
-      
+
       return detections;
-      
     } catch (e, stackTrace) {
       developer.log('❌ Error during inference: $e');
       if (_enableDetailedLogging) developer.log('📋 Stack trace: $stackTrace');
       rethrow;
+    }
+  }
+
+  List<List<List<double>>>? _convertOutputFormat(dynamic outputTensor) {
+    try {
+      if (outputTensor is List<List<List<num>>>) {
+        // Convert num to double
+        return outputTensor
+            .map((batch) => batch
+                .map((features) =>
+                    features.map((value) => value.toDouble()).toList())
+                .toList())
+            .toList();
+      }
+
+      if (outputTensor is List<List<num>>) {
+        // Wrap in batch dimension
+        developer.log('📋 Wrapping 2D output in batch dimension');
+        return [
+          outputTensor
+              .map((features) =>
+                  features.map((value) => value.toDouble()).toList())
+              .toList()
+        ];
+      }
+
+      return null;
+    } catch (e) {
+      developer.log('❌ Error converting output format: $e');
+      return null;
     }
   }
 
@@ -268,36 +349,40 @@ class OnnxInference {
         }
       }
     }
-    
+
     final detections = <Detection>[];
-    
+
     // Get user settings
     final confidenceThreshold = SettingsService.instance.confidenceThreshold;
     final enabledObjects = SettingsService.instance.enabledObjects;
-    
+
     if (_enableDetailedLogging) {
-      developer.log('📋 Using confidence threshold: ${(confidenceThreshold * 100).toInt()}%');
-      developer.log('📋 Enabled objects: ${enabledObjects.entries.where((e) => e.value).map((e) => e.key).join(', ')}');
+      developer.log(
+          '📋 Using confidence threshold: ${(confidenceThreshold * 100).toInt()}%');
+      developer.log(
+          '📋 Enabled objects: ${enabledObjects.entries.where((e) => e.value).map((e) => e.key).join(', ')}');
     }
-    
+
     // ENHANCED PARAMETERS for better accuracy
     const double minBoxArea = 900.0;
     const double maxBoxArea = 640.0 * 640.0 * 0.8;
     const int maxDetections = 5; // Limit for quality
     const double aspectRatioMin = 0.2;
     const double aspectRatioMax = 5.0;
-    
+
     final batch = outputs[0];
     final numFeatures = batch.length;
     final numAnchors = batch[0].length;
-    
+
     if (_enableDetailedLogging) {
-      developer.log('📋 Processing $numAnchors anchors with $numFeatures features each');
-      developer.log('📋 Enhanced confidence threshold: ${(confidenceThreshold * 100).toInt()}%');
+      developer.log(
+          '📋 Processing $numAnchors anchors with $numFeatures features each');
+      developer.log(
+          '📋 Enhanced confidence threshold: ${(confidenceThreshold * 100).toInt()}%');
     }
-    
+
     final potentialDetections = <Map<String, dynamic>>[];
-    
+
     // ENHANCED: Better detection processing
     for (int anchor = 0; anchor < numAnchors; anchor++) {
       final xCenter = batch[0][anchor];
@@ -326,36 +411,44 @@ class OnnxInference {
 
       // Apply sigmoid activation
       final confidence = 1.0 / (1.0 + math.exp(-maxScore));
-      
+
       // Check if this object type is enabled
       final className = _classNames[classId];
       final isObjectEnabled = enabledObjects[className] ?? false;
-      
+
       // ENHANCED FILTERING with stricter criteria
-      if (confidence > confidenceThreshold && 
+      if (confidence > confidenceThreshold &&
           isObjectEnabled &&
-          classId >= 0 && 
+          classId >= 0 &&
           classId < _classNames.length &&
-          width > 0 && height > 0 &&
-          xCenter > 0 && yCenter > 0 && 
-          xCenter < 640 && yCenter < 640) {
-        
+          width > 0 &&
+          height > 0 &&
+          xCenter > 0 &&
+          yCenter > 0 &&
+          xCenter < 640 &&
+          yCenter < 640) {
         // Convert from center format to corner format
         final x1 = xCenter - width / 2;
         final y1 = yCenter - height / 2;
         final x2 = xCenter + width / 2;
         final y2 = yCenter + height / 2;
-        
+
         final boxArea = width * height;
         final aspectRatio = width / height;
-        
+
         // STRICT QUALITY FILTERING
-        if (x2 > x1 && y2 > y1 && 
-            x1 >= 0 && y1 >= 0 && x2 <= 640 && y2 <= 640 &&
-            boxArea >= minBoxArea && boxArea <= maxBoxArea &&
-            aspectRatio >= aspectRatioMin && aspectRatio <= aspectRatioMax &&
-            width >= 15 && height >= 15) {
-          
+        if (x2 > x1 &&
+            y2 > y1 &&
+            x1 >= 0 &&
+            y1 >= 0 &&
+            x2 <= 640 &&
+            y2 <= 640 &&
+            boxArea >= minBoxArea &&
+            boxArea <= maxBoxArea &&
+            aspectRatio >= aspectRatioMin &&
+            aspectRatio <= aspectRatioMax &&
+            width >= 15 &&
+            height >= 15) {
           potentialDetections.add({
             'x1': x1,
             'y1': y1,
@@ -371,18 +464,20 @@ class OnnxInference {
     }
 
     if (_enableDetailedLogging) {
-      developer.log('📋 Found ${potentialDetections.length} potential detections');
+      developer
+          .log('📋 Found ${potentialDetections.length} potential detections');
     }
-    
+
     // Sort by confidence and apply quality filtering
-    potentialDetections.sort((a, b) => (b['confidence'] as double).compareTo(a['confidence'] as double));
-    
+    potentialDetections.sort((a, b) =>
+        (b['confidence'] as double).compareTo(a['confidence'] as double));
+
     // ENHANCED quality filtering
     final qualityFiltered = <Map<String, dynamic>>[];
     for (final det in potentialDetections) {
       final conf = det['confidence'] as double;
       final area = det['area'] as double;
-      
+
       // Stricter quality requirements
       if (conf >= 0.9) {
         // Very high confidence - accept
@@ -399,50 +494,62 @@ class OnnxInference {
         }
       }
     }
-    
+
     // Limit to best detections
     final limitedDetections = qualityFiltered.take(maxDetections).toList();
     if (_enableDetailedLogging) {
-      developer.log('📋 Quality filtered to ${qualityFiltered.length}, limited to ${limitedDetections.length}');
+      developer.log(
+          '📋 Quality filtered to ${qualityFiltered.length}, limited to ${limitedDetections.length}');
     }
-    
+
     // Convert to Detection objects with proper scaling
     for (final det in limitedDetections) {
       final detection = _createDetection(
-        det['x1'] as double,
-        det['y1'] as double, 
-        det['x2'] as double,
-        det['y2'] as double,
-        det['confidence'] as double,
-        det['classId'] as int,
-        originalWidth,
-        originalHeight,
-        640 // Input size
-      );
+          det['x1'] as double,
+          det['y1'] as double,
+          det['x2'] as double,
+          det['y2'] as double,
+          det['confidence'] as double,
+          det['classId'] as int,
+          originalWidth,
+          originalHeight,
+          640 // Input size
+          );
       detections.add(detection);
       if (_enableDetailedLogging) {
-        developer.log('✅ HIGH-QUALITY detection: ${_classNames[det['classId'] as int]} (${((det['confidence'] as double) * 100).toStringAsFixed(1)}%)');
+        developer.log(
+            '✅ HIGH-QUALITY detection: ${_classNames[det['classId'] as int]} (${((det['confidence'] as double) * 100).toStringAsFixed(1)}%)');
       }
     }
 
     final result = _applyEnhancedNMS(detections, 0.3);
     if (_enableDetailedLogging) {
-      developer.log('📋 Final result: ${result.length} detections after Enhanced NMS');
+      developer.log(
+          '📋 Final result: ${result.length} detections after Enhanced NMS');
     }
-    
+
     return result;
   }
 
   Detection _createDetection(
-    double x1, double y1, double x2, double y2, 
-    double confidence, int classId, 
-    int originalWidth, int originalHeight, int inputSize
-  ) {
+      double x1,
+      double y1,
+      double x2,
+      double y2,
+      double confidence,
+      int classId,
+      int originalWidth,
+      int originalHeight,
+      int inputSize) {
     // FIXED: Proper scaling and clamping to prevent boxes going outside image
-    final scaledX1 = ((x1 / inputSize) * originalWidth).clamp(0.0, originalWidth.toDouble());
-    final scaledY1 = ((y1 / inputSize) * originalHeight).clamp(0.0, originalHeight.toDouble());
-    final scaledX2 = ((x2 / inputSize) * originalWidth).clamp(0.0, originalWidth.toDouble());
-    final scaledY2 = ((y2 / inputSize) * originalHeight).clamp(0.0, originalHeight.toDouble());
+    final scaledX1 =
+        ((x1 / inputSize) * originalWidth).clamp(0.0, originalWidth.toDouble());
+    final scaledY1 = ((y1 / inputSize) * originalHeight)
+        .clamp(0.0, originalHeight.toDouble());
+    final scaledX2 =
+        ((x2 / inputSize) * originalWidth).clamp(0.0, originalWidth.toDouble());
+    final scaledY2 = ((y2 / inputSize) * originalHeight)
+        .clamp(0.0, originalHeight.toDouble());
 
     return Detection(
       x1: scaledX1,
@@ -455,9 +562,10 @@ class OnnxInference {
     );
   }
 
-  List<Detection> _applyEnhancedNMS(List<Detection> detections, double iouThreshold) {
+  List<Detection> _applyEnhancedNMS(
+      List<Detection> detections, double iouThreshold) {
     if (detections.isEmpty) return detections;
-    
+
     // Sort by confidence (descending)
     detections.sort((a, b) => b.confidence.compareTo(a.confidence));
 
@@ -473,7 +581,7 @@ class OnnxInference {
         if (suppressed[j]) continue;
 
         final iou = _calculateIoU(detections[i], detections[j]);
-        
+
         // Enhanced NMS with class consideration
         if (iou > iouThreshold) {
           if (detections[i].classId == detections[j].classId) {
@@ -487,7 +595,8 @@ class OnnxInference {
     }
 
     if (_enableDetailedLogging) {
-      developer.log('📋 Enhanced NMS: Kept ${result.length} out of ${detections.length} detections');
+      developer.log(
+          '📋 Enhanced NMS: Kept ${result.length} out of ${detections.length} detections');
     }
     return result;
   }
@@ -502,7 +611,8 @@ class OnnxInference {
       return 0.0;
     }
 
-    final intersectionArea = (intersectionX2 - intersectionX1) * (intersectionY2 - intersectionY1);
+    final intersectionArea =
+        (intersectionX2 - intersectionX1) * (intersectionY2 - intersectionY1);
     final areaA = (a.x2 - a.x1) * (a.y2 - a.y1);
     final areaB = (b.x2 - b.x1) * (b.y2 - b.y1);
     final unionArea = areaA + areaB - intersectionArea;
