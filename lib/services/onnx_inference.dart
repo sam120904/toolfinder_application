@@ -54,16 +54,18 @@ class OnnxInference {
     // Resize the image to 640x640
     final resizedImage = img.copyResize(image, width: 640, height: 640);
 
-    // Normalize and prepare the image tensor
-    final imageBytes = resizedImage.getBytes();
+    // Normalize and prepare the image tensor in CHW format (Channel, Height, Width)
     final floatList = Float32List(1 * 3 * 640 * 640);
-    int bufferIndex = 0;
+    int pixelIndex = 0;
 
-    for (int i = 0; i < imageBytes.length; i += 3) {
-      floatList[bufferIndex] = imageBytes[i] / 255.0; // R
-      floatList[bufferIndex + 640 * 640] = imageBytes[i + 1] / 255.0; // G
-      floatList[bufferIndex + 2 * 640 * 640] = imageBytes[i + 2] / 255.0; // B
-      bufferIndex++;
+    for (int y = 0; y < 640; y++) {
+      for (int x = 0; x < 640; x++) {
+        final pixel = resizedImage.getPixel(x, y);
+        floatList[pixelIndex] = pixel.r / 255.0;
+        floatList[pixelIndex + 640 * 640] = pixel.g / 255.0;
+        floatList[pixelIndex + 2 * 640 * 640] = pixel.b / 255.0;
+        pixelIndex++;
+      }
     }
 
     // Create the ONNX tensor
