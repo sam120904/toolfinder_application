@@ -17,7 +17,7 @@ class OnnxInference {
   String? _initError;
 
   // OPTIMIZED: Reduced logging to minimize terminal spam
-  static const bool _enableDetailedLogging = false;
+  static const bool _enableDetailedLogging = true;
 
   static const List<String> _classNames = [
     'OxygenTank', 'NitrogenTank', 'FirstAidBox', 'FireAlarm', 'SafetySwitchPanel', 'EmergencyPhone', 'FireExtinguisher'
@@ -181,21 +181,44 @@ class OnnxInference {
       
       // Process outputs with enhanced filtering
       List<Detection> detections = [];
-      
+
       if (outputs.isNotEmpty && outputs[0] != null) {
         final outputTensor = outputs[0]!.value;
-        if (_enableDetailedLogging) developer.log('📊 Output tensor type: ${outputTensor.runtimeType}');
-        
-        // Handle YOLOv8 output format with enhanced accuracy
-        if (outputTensor is List<List<List<double>>>) {
-          if (_enableDetailedLogging) developer.log('📋 Processing YOLOv8 format with enhanced accuracy');
-          detections = _processYOLOv8OutputEnhanced(outputTensor, image.width, image.height);
+        developer.log('📊 Output tensor type: ${outputTensor.runtimeType}');
+        developer.log('📊 Output tensor: $outputTensor');
+
+        // Handle different output formats
+        if (outputTensor is List) {
+          developer.log('📋 Output is a List with length: ${outputTensor.length}');
+          if (outputTensor.isNotEmpty) {
+            developer.log('📋 First element type: ${outputTensor[0].runtimeType}');
+          }
+
+          // Try to cast to proper format
+          try {
+            if (outputTensor is List<List<List<double>>>) {
+              developer.log('📋 Processing YOLOv8 format [batch][features][anchors]');
+              detections = _processYOLOv8OutputEnhanced(outputTensor, image.width, image.height);
+            } else {
+              // Try to convert to the expected format
+              final converted = _convertOutputFormat(outputTensor);
+              if (converted != null) {
+                developer.log('📋 Converted output format successfully');
+                detections = _processYOLOv8OutputEnhanced(converted, image.width, image.height);
+              } else {
+                developer.log('❌ Could not convert output format');
+              }
+            }
+          } catch (e) {
+            developer.log('❌ Error processing output: $e');
+            detections = [];
+          }
         } else {
-          if (_enableDetailedLogging) developer.log('❓ Unexpected output format: ${outputTensor.runtimeType}');
+          developer.log('❓ Unexpected output format: ${outputTensor.runtimeType}');
           detections = [];
         }
       } else {
-        if (_enableDetailedLogging) developer.log('❌ No outputs received from model');
+        developer.log('❌ No outputs received from model');
         detections = [];
       }
 
@@ -214,6 +237,32 @@ class OnnxInference {
       developer.log('❌ Error during inference: $e');
       if (_enableDetailedLogging) developer.log('📋 Stack trace: $stackTrace');
       rethrow;
+    }
+  }
+
+  List<List<List<double>>>? _convertOutputFormat(dynamic outputTensor) {
+    try {
+      if (outputTensor is List<List<List<num>>>) {
+        // Convert num to double
+        return outputTensor.map((batch) =>
+          batch.map((features) =>
+            features.map((value) => value.toDouble()).toList()
+          ).toList()
+        ).toList();
+      }
+
+      if (outputTensor is List<List<num>>) {
+        // Wrap in batch dimension
+        developer.log('📋 Wrapping 2D output in batch dimension');
+        return [outputTensor.map((features) =>
+          features.map((value) => value.toDouble()).toList()
+        ).toList()];
+      }
+
+      return null;
+    } catch (e) {
+      developer.log('❌ Error converting output format: $e');
+      return null;
     }
   }
 
