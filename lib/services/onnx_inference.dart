@@ -304,26 +304,26 @@ class OnnxInference {
       final yCenter = batch[1][anchor];
       final width = batch[2][anchor];
       final height = batch[3][anchor];
-      
-      // Get class scores
-      final class0Score = batch[4][anchor];
-      final class1Score = batch[5][anchor];
-      final class2Score = batch[6][anchor];
-      
+
+      // Get all 7 class scores
+      final classScores = <double>[];
+      for (int i = 0; i < _classNames.length; i++) {
+        if (4 + i < numFeatures) {
+          classScores.add(batch[4 + i][anchor]);
+        }
+      }
+
       // Find the class with highest score
-      double maxScore = class0Score;
+      double maxScore = classScores[0];
       int classId = 0;
-      
-      if (class1Score > maxScore) {
-        maxScore = class1Score;
-        classId = 1;
+
+      for (int i = 1; i < classScores.length; i++) {
+        if (classScores[i] > maxScore) {
+          maxScore = classScores[i];
+          classId = i;
+        }
       }
-      
-      if (class2Score > maxScore) {
-        maxScore = class2Score;
-        classId = 2;
-      }
-      
+
       // Apply sigmoid activation
       final confidence = 1.0 / (1.0 + math.exp(-maxScore));
       
