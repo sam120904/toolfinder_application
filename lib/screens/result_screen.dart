@@ -31,22 +31,22 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    
+
     _particleController = AnimationController(
       duration: const Duration(seconds: 10),
       vsync: this,
     )..repeat();
-    
+
     _glowController = AnimationController(
       duration: const Duration(seconds: 5),
       vsync: this,
     )..repeat(reverse: true);
-    
+
     _pulseController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
     )..repeat(reverse: true);
-    
+
     _particles = List.generate(25, (index) => Particle());
   }
 
@@ -65,7 +65,7 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
         source: ImageSource.camera,
         imageQuality: 85,
       );
-      
+
       if (pickedFile != null && mounted) {
         Navigator.pushReplacement(
           context,
@@ -121,7 +121,7 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        toolbarHeight: 48, // REDUCED from default 56 to 48
+        toolbarHeight: 48,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
@@ -137,10 +137,10 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
         children: [
           // Floating Particles (Stars)
           _buildFloatingParticles(),
-          
+
           // Glow Effects
           _buildGlowEffects(),
-          
+
           // Main Content
           SafeArea(
             child: Padding(
@@ -149,17 +149,17 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
                 children: [
                   // Results Summary
                   _buildResultsSummary(),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Image with Bounding Boxes
                   Expanded(
                     child: _buildImageWithDetections(),
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
-                  // Action Buttons - IMPROVED SIZE
+
+                  // Action Buttons
                   _buildActionButtons(),
                 ],
               ),
@@ -178,7 +178,7 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
           children: _particles.map((particle) {
             final progress = _particleController.value;
             final yOffset = math.sin(progress * 2 * math.pi + particle.phase) * 30;
-            
+
             return Positioned(
               left: particle.x * MediaQuery.of(context).size.width,
               top: particle.y * MediaQuery.of(context).size.height + yOffset,
@@ -186,11 +186,11 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
                 width: particle.size,
                 height: particle.size,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: particle.opacity),
+                  color: Colors.white.withOpacity(particle.opacity),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.white.withValues(alpha: particle.opacity * 0.5),
+                      color: Colors.white.withOpacity(particle.opacity * 0.5),
                       blurRadius: 2,
                       spreadRadius: 0.5,
                     ),
@@ -220,7 +220,7 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      Colors.blue.withValues(alpha: 0.04 * _glowController.value),
+                      Colors.blue.withOpacity(0.04 * _glowController.value),
                       Colors.transparent,
                     ],
                   ),
@@ -237,7 +237,7 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      Colors.purple.withValues(alpha: 0.04 * (1 - _glowController.value)),
+                      Colors.purple.withOpacity(0.04 * (1 - _glowController.value)),
                       Colors.transparent,
                     ],
                   ),
@@ -257,28 +257,28 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20), // Reduced from 28 to 20
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: widget.detections.isNotEmpty 
-                  ? Colors.green.withValues(alpha: 0.2)
-                  : Colors.white.withValues(alpha: 0.1),
+              color: widget.detections.isNotEmpty
+                  ? Colors.green.withOpacity(0.2)
+                  : Colors.white.withOpacity(0.1),
               width: 1,
             ),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withValues(alpha: 0.08),
-                Colors.white.withValues(alpha: 0.03),
+                Colors.white.withOpacity(0.08),
+                Colors.white.withOpacity(0.03),
               ],
             ),
             boxShadow: [
               BoxShadow(
-                color: widget.detections.isNotEmpty 
-                    ? Colors.green.withValues(alpha: 0.2)
-                    : Colors.grey.withValues(alpha: 0.1),
+                color: widget.detections.isNotEmpty
+                    ? Colors.green.withOpacity(0.2)
+                    : Colors.grey.withOpacity(0.1),
                 blurRadius: 20,
                 spreadRadius: 3,
               ),
@@ -286,20 +286,20 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
           ),
           child: Row(
             children: [
-              // Detection Count with Animation - make it smaller
+              // Detection Count with Animation
               AnimatedBuilder(
                 animation: _pulseController,
                 builder: (context, child) {
                   return Container(
-                    width: 64, // Reduced from 80 to 64
-                    height: 64, // Reduced from 80 to 64
+                    width: 64,
+                    height: 64,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          widget.detections.isNotEmpty 
-                              ? Colors.green.withValues(alpha: 0.3 * _pulseController.value)
-                              : Colors.grey.withValues(alpha: 0.3),
+                          widget.detections.isNotEmpty
+                              ? Colors.green.withOpacity(0.3 * _pulseController.value)
+                              : Colors.grey.withOpacity(0.3),
                           Colors.transparent,
                         ],
                       ),
@@ -308,9 +308,9 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
                       child: Text(
                         '${widget.detections.length}',
                         style: TextStyle(
-                          fontSize: 28, // Reduced from 32 to 28
+                          fontSize: 28,
                           fontWeight: FontWeight.w300,
-                          color: widget.detections.isNotEmpty 
+                          color: widget.detections.isNotEmpty
                               ? Colors.green
                               : Colors.grey,
                         ),
@@ -319,47 +319,47 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
                   );
                 },
               ),
-              
-              const SizedBox(width: 20), // Reduced from 24 to 20
-              
+
+              const SizedBox(width: 20),
+
               // Detection Summary Text
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.detections.isEmpty 
+                      widget.detections.isEmpty
                           ? 'No Objects Detected'
                           : 'Objects Detected',
                       style: const TextStyle(
-                        fontSize: 20, // Reduced from 22 to 20
+                        fontSize: 20,
                         fontWeight: FontWeight.w400,
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 6), // Reduced from 8 to 6
+                    const SizedBox(height: 6),
                     Text(
                       widget.detections.isEmpty
                           ? 'Try different lighting or angle'
                           : _getDetectionSummary(),
                       style: TextStyle(
-                        fontSize: 14, // Reduced from 16 to 14
-                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.7),
                       ),
                     ),
                   ],
                 ),
               ),
-              
-              // Status Icon - make it smaller
+
+              // Status Icon
               Icon(
-                widget.detections.isEmpty 
+                widget.detections.isEmpty
                     ? Icons.search_off_rounded
                     : Icons.check_circle_rounded,
-                color: widget.detections.isEmpty 
+                color: widget.detections.isEmpty
                     ? Colors.grey
                     : Colors.green,
-                size: 32, // Reduced from 36 to 32
+                size: 32,
               ),
             ],
           ),
@@ -377,12 +377,12 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.5),
+              color: Colors.black.withOpacity(0.5),
               blurRadius: 30,
               offset: const Offset(0, 15),
             ),
             BoxShadow(
-              color: Colors.white.withValues(alpha: 0.05),
+              color: Colors.white.withOpacity(0.05),
               blurRadius: 40,
               spreadRadius: 2,
             ),
@@ -391,12 +391,11 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
           child: Stack(
+            fit: StackFit.expand,
             children: [
               Image.file(
                 File(widget.imagePath),
                 fit: BoxFit.contain,
-                width: double.infinity,
-                height: double.infinity,
               ),
               BoundingBoxOverlay(
                 imagePath: widget.imagePath,
@@ -414,7 +413,7 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
       children: [
         Expanded(
           child: SizedBox(
-            height: 96, // INCREASED from 80 to 96 for better text visibility
+            height: 96,
             child: _buildGlassButton(
               onPressed: _scanNewImage,
               icon: Icons.camera_alt_rounded,
@@ -426,7 +425,7 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
         const SizedBox(width: 16),
         Expanded(
           child: SizedBox(
-            height: 96, // INCREASED from 80 to 96 for better text visibility
+            height: 96,
             child: _buildGlassButton(
               onPressed: _returnToHome,
               icon: Icons.home_rounded,
@@ -456,14 +455,14 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
+                color: Colors.white.withOpacity(0.1),
               ),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withValues(alpha: 0.08),
-                  Colors.white.withValues(alpha: 0.03),
+                  Colors.white.withOpacity(0.08),
+                  Colors.white.withOpacity(0.03),
                 ],
               ),
             ),
@@ -477,7 +476,7 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        Colors.white.withValues(alpha: 0.2),
+                        Colors.white.withOpacity(0.2),
                         Colors.transparent,
                       ],
                     ),
@@ -501,17 +500,17 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
                           fontWeight: FontWeight.w500,
                           color: Colors.white,
                         ),
-                        overflow: TextOverflow.ellipsis, // PREVENT TEXT CUTOFF
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4), // INCREASED spacing
+                      const SizedBox(height: 4),
                       Text(
                         subtitle,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.white.withValues(alpha: 0.7),
+                          color: Colors.white.withOpacity(0.7),
                         ),
-                        overflow: TextOverflow.ellipsis, // PREVENT TEXT CUTOFF
-                        maxLines: 2, // ALLOW 2 LINES FOR LONGER TEXT
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
                       ),
                     ],
                   ),
@@ -529,11 +528,11 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
     for (final detection in widget.detections) {
       classCount[detection.className] = (classCount[detection.className] ?? 0) + 1;
     }
-    
+
     final summary = classCount.entries
         .map((entry) => '${entry.value} ${entry.key}${entry.value > 1 ? 's' : ''}')
         .join(', ');
-    
+
     return summary;
   }
 
@@ -551,14 +550,14 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: Colors.white.withOpacity(0.1),
                 ),
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Colors.white.withValues(alpha: 0.08),
-                    Colors.white.withValues(alpha: 0.03),
+                    Colors.white.withOpacity(0.08),
+                    Colors.white.withOpacity(0.03),
                   ],
                 ),
               ),
@@ -575,7 +574,7 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
                           shape: BoxShape.circle,
                           gradient: RadialGradient(
                             colors: [
-                              Colors.white.withValues(alpha: 0.2),
+                              Colors.white.withOpacity(0.2),
                               Colors.transparent,
                             ],
                           ),
@@ -598,7 +597,6 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
                     ],
                   ),
                   const SizedBox(height: 24),
-                  
                   if (widget.detections.isEmpty)
                     const Text(
                       'No objects were detected in this image.',
@@ -615,9 +613,9 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
-                          color: Colors.white.withValues(alpha: 0.05),
+                          color: Colors.white.withOpacity(0.05),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.1),
+                            color: Colors.white.withOpacity(0.1),
                           ),
                         ),
                         child: Row(
@@ -630,7 +628,8 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
                                 color: _getClassColor(detection.classId),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: _getClassColor(detection.classId).withValues(alpha: 0.5),
+                                    color: _getClassColor(detection.classId)
+                                        .withOpacity(0.5),
                                     blurRadius: 4,
                                     spreadRadius: 1,
                                   ),
@@ -652,15 +651,13 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
                         ),
                       );
                     }),
-                  
                   const SizedBox(height: 24),
-                  
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () => Navigator.of(context).pop(),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white.withValues(alpha: 0.1),
+                        backgroundColor: Colors.white.withOpacity(0.1),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -683,10 +680,15 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
   }
 
   Color _getClassColor(int classId) {
+    // Updated list with 7 colors
     const colors = [
-      Color(0xFFFF6B6B), // FireExtinguisher - Bright red
-      Color(0xFF4ECDC4), // ToolBox - Cyan
       Color(0xFF45B7D1), // OxygenTank - Blue
+      Color(0xFF4ECDC4), // NitrogenTank - Cyan
+      Color(0xFFC4F2C2), // FirstAidBox - Light Green
+      Color(0xFFFF6B6B), // FireAlarm - Bright Red
+      Color(0xFFFFD166), // SafetySwitchPanel - Yellow
+      Color(0xFF9B5DE5), // EmergencyPhone - Purple
+      Color(0xFFF15BB5), // FireExtinguisher - Pink
     ];
     return colors[classId % colors.length];
   }

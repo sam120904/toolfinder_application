@@ -30,7 +30,7 @@ class _BoundingBoxOverlayState extends State<BoundingBoxOverlay>
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     )..repeat(reverse: true);
-    
+
     _pulseAnimation = Tween<double>(
       begin: 0.7,
       end: 1.0,
@@ -56,16 +56,18 @@ class _BoundingBoxOverlayState extends State<BoundingBoxOverlay>
         }
 
         final imageSize = snapshot.data!;
-        
+
         return LayoutBuilder(
           builder: (context, constraints) {
-            final containerSize = Size(constraints.maxWidth, constraints.maxHeight);
+            final containerSize =
+                Size(constraints.maxWidth, constraints.maxHeight);
             final displaySize = _calculateDisplaySize(imageSize, containerSize);
             final offset = _calculateOffset(displaySize, containerSize);
 
             return Stack(
               children: widget.detections.map((detection) {
-                return _buildBoundingBox(detection, imageSize, displaySize, offset, context);
+                return _buildBoundingBox(
+                    detection, imageSize, displaySize, offset, context);
               }).toList(),
             );
           },
@@ -78,11 +80,11 @@ class _BoundingBoxOverlayState extends State<BoundingBoxOverlay>
     final imageFile = File(widget.imagePath);
     final imageBytes = await imageFile.readAsBytes();
     final image = img.decodeImage(imageBytes);
-    
+
     if (image != null) {
       return Size(image.width.toDouble(), image.height.toDouble());
     }
-    
+
     return const Size(1, 1);
   }
 
@@ -120,10 +122,14 @@ class _BoundingBoxOverlayState extends State<BoundingBoxOverlay>
     final scaleX = displaySize.width / imageSize.width;
     final scaleY = displaySize.height / imageSize.height;
 
-    final left = (detection.x1 * scaleX + offset.dx).clamp(0.0, displaySize.width + offset.dx);
-    final top = (detection.y1 * scaleY + offset.dy).clamp(0.0, displaySize.height + offset.dy);
-    final right = (detection.x2 * scaleX + offset.dx).clamp(0.0, displaySize.width + offset.dx);
-    final bottom = (detection.y2 * scaleY + offset.dy).clamp(0.0, displaySize.height + offset.dy);
+    final left = (detection.x1 * scaleX + offset.dx)
+        .clamp(0.0, displaySize.width + offset.dx);
+    final top = (detection.y1 * scaleY + offset.dy)
+        .clamp(0.0, displaySize.height + offset.dy);
+    final right = (detection.x2 * scaleX + offset.dx)
+        .clamp(0.0, displaySize.width + offset.dx);
+    final bottom = (detection.y2 * scaleY + offset.dy)
+        .clamp(0.0, displaySize.height + offset.dy);
 
     final width = (right - left).clamp(0.0, displaySize.width);
     final height = (bottom - top).clamp(0.0, displaySize.height);
@@ -145,13 +151,13 @@ class _BoundingBoxOverlayState extends State<BoundingBoxOverlay>
             height: height,
             decoration: BoxDecoration(
               border: Border.all(
-                color: color.withValues(alpha: _pulseAnimation.value),
+                color: color.withOpacity(_pulseAnimation.value),
                 width: 3.0,
               ),
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: color.withValues(alpha: 0.4 * _pulseAnimation.value),
+                  color: color.withOpacity(0.4 * _pulseAnimation.value),
                   blurRadius: 12,
                   spreadRadius: 2,
                 ),
@@ -168,12 +174,13 @@ class _BoundingBoxOverlayState extends State<BoundingBoxOverlay>
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.8),
+                          color: Colors.black.withOpacity(0.8),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: color.withValues(alpha: 0.6),
+                            color: color.withOpacity(0.6),
                             width: 1,
                           ),
                         ),
@@ -185,7 +192,7 @@ class _BoundingBoxOverlayState extends State<BoundingBoxOverlay>
                             fontWeight: FontWeight.bold,
                             shadows: [
                               Shadow(
-                                color: Colors.black.withValues(alpha: 0.8),
+                                color: Colors.black.withOpacity(0.8),
                                 offset: const Offset(1, 1),
                                 blurRadius: 2,
                               ),
@@ -205,10 +212,15 @@ class _BoundingBoxOverlayState extends State<BoundingBoxOverlay>
   }
 
   Color _getClassColor(int classId) {
+    // Updated list with 7 colors
     const colors = [
-      Color(0xFFFF6B6B), // FireExtinguisher - Bright red
-      Color(0xFF4ECDC4), // ToolBox - Cyan  
       Color(0xFF45B7D1), // OxygenTank - Blue
+      Color(0xFF4ECDC4), // NitrogenTank - Cyan
+      Color(0xFFC4F2C2), // FirstAidBox - Light Green
+      Color(0xFFFF6B6B), // FireAlarm - Bright Red
+      Color(0xFFFFD166), // SafetySwitchPanel - Yellow
+      Color(0xFF9B5DE5), // EmergencyPhone - Purple
+      Color(0xFFF15BB5), // FireExtinguisher - Pink
     ];
     return colors[classId % colors.length];
   }
