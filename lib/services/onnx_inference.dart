@@ -333,26 +333,24 @@ class OnnxInference {
     );
   }
 
-  // ENHANCED: Better accuracy with improved filtering
   List<Detection> _processYOLOv8OutputEnhanced(
     List<List<List<double>>> outputs,
     int originalWidth,
     int originalHeight,
   ) {
     if (_enableDetailedLogging) {
-      developer.log('📋 Enhanced YOLOv8 Processing:');
+      developer.log('📋 YOLOv8 Processing:');
       developer.log('📋 Batch size: ${outputs.length}');
       if (outputs.isNotEmpty) {
-        developer.log('📋 Features: ${outputs[0].length}');
+        developer.log('📋 Dimension 1: ${outputs[0].length}');
         if (outputs[0].isNotEmpty) {
-          developer.log('📋 Anchors: ${outputs[0][0].length}');
+          developer.log('📋 Dimension 2: ${outputs[0][0].length}');
         }
       }
     }
 
     final detections = <Detection>[];
 
-    // Get user settings
     final confidenceThreshold = SettingsService.instance.confidenceThreshold;
     final enabledObjects = SettingsService.instance.enabledObjects;
 
@@ -363,45 +361,70 @@ class OnnxInference {
           '📋 Enabled objects: ${enabledObjects.entries.where((e) => e.value).map((e) => e.key).join(', ')}');
     }
 
-    // ENHANCED PARAMETERS for better accuracy
-    const double minBoxArea = 900.0;
-    const double maxBoxArea = 640.0 * 640.0 * 0.8;
-    const int maxDetections = 5; // Limit for quality
-    const double aspectRatioMin = 0.2;
-    const double aspectRatioMax = 5.0;
+    const double minBoxArea = 400.0;
+    const double maxBoxArea = 640.0 * 640.0 * 0.9;
+    const int maxDetections = 10;
+    const double aspectRatioMin = 0.1;
+    const double aspectRatioMax = 10.0;
 
     final batch = outputs[0];
-    final numFeatures = batch.length;
-    final numAnchors = batch[0].length;
+    final dim1 = batch.length;
+    final dim2 = batch[0].length;
+
+    int numAnchors;
+    int numFeatures;
+    bool needsTranspose = false;
+
+    if (dim2 == 4 + _classNames.length) {
+      numAnchors = dim1;
+      numFeatures = dim2;
+      needsTranspose = true;
+      if (_enableDetailedLogging) {
+        developer.log('📋 Detected YOLOv8 format: [$numAnchors][$numFeatures] (needs transpose)');
+      }
+    } else if (dim1 == 4 + _classNames.length) {
+      numAnchors = dim2;
+      numFeatures = dim1;
+      needsTranspose = false;
+      if (_enableDetailedLogging) {
+        developer.log('📋 Detected transposed format: [$numFeatures][$numAnchors]');
+      }
+    } else {
+      developer.log('❌ Unexpected output dimensions: [$dim1][$dim2]');
+      return [];
+    }
 
     if (_enableDetailedLogging) {
       developer.log(
           '📋 Processing $numAnchors anchors with $numFeatures features each');
-      developer.log(
-          '📋 Enhanced confidence threshold: ${(confidenceThreshold * 100).toInt()}%');
     }
 
     final potentialDetections = <Map<String, dynamic>>[];
 
-    // ENHANCED: Better detection processing
     for (int anchor = 0; anchor < numAnchors; anchor++) {
-      final xCenter = batch[0][anchor];
-      final yCenter = batch[1][anchor];
-      final width = batch[2][anchor];
-      final height = batch[3][anchor];
+      double xCenter, yCenter, width, height;
+      List<double> classScores = [];
 
-      // Get all 7 class scores
-      final classScores = <double>[];
-      for (int i = 0; i < _classNames.length; i++) {
-        if (4 + i < numFeatures) {
+      if (needsTranspose) {
+        xCenter = batch[anchor][0];
+        yCenter = batch[anchor][1];
+        width = batch[anchor][2];
+        height = batch[anchor][3];
+        for (int i = 0; i < _classNames.length; i++) {
+          classScores.add(batch[anchor][4 + i]);
+        }
+      } else {
+        xCenter = batch[0][anchor];
+        yCenter = batch[1][anchor];
+        width = batch[2][anchor];
+        height = batch[3][anchor];
+        for (int i = 0; i < _classNames.length; i++) {
           classScores.add(batch[4 + i][anchor]);
         }
       }
 
-      // Find the class with highest score
       double maxScore = classScores[0];
       int classId = 0;
-
       for (int i = 1; i < classScores.length; i++) {
         if (classScores[i] > maxScore) {
           maxScore = classScores[i];
@@ -409,25 +432,17 @@ class OnnxInference {
         }
       }
 
-      // Apply sigmoid activation
-      final confidence = 1.0 / (1.0 + math.exp(-maxScore));
+      final confidence = maxScore.clamp(0.0, 1.0);
 
-      // Check if this object type is enabled
       final className = _classNames[classId];
       final isObjectEnabled = enabledObjects[className] ?? false;
 
-      // ENHANCED FILTERING with stricter criteria
       if (confidence > confidenceThreshold &&
           isObjectEnabled &&
           classId >= 0 &&
           classId < _classNames.length &&
           width > 0 &&
-          height > 0 &&
-          xCenter > 0 &&
-          yCenter > 0 &&
-          xCenter < 640 &&
-          yCenter < 640) {
-        // Convert from center format to corner format
+          height > 0) {
         final x1 = xCenter - width / 2;
         final y1 = yCenter - height / 2;
         final x2 = xCenter + width / 2;
@@ -436,7 +451,6 @@ class OnnxInference {
         final boxArea = width * height;
         final aspectRatio = width / height;
 
-        // STRICT QUALITY FILTERING
         if (x2 > x1 &&
             y2 > y1 &&
             x1 >= 0 &&
@@ -447,8 +461,8 @@ class OnnxInference {
             boxArea <= maxBoxArea &&
             aspectRatio >= aspectRatioMin &&
             aspectRatio <= aspectRatioMax &&
-            width >= 15 &&
-            height >= 15) {
+            width >= 10 &&
+            height >= 10) {
           potentialDetections.add({
             'x1': x1,
             'y1': y1,
@@ -468,41 +482,15 @@ class OnnxInference {
           .log('📋 Found ${potentialDetections.length} potential detections');
     }
 
-    // Sort by confidence and apply quality filtering
     potentialDetections.sort((a, b) =>
         (b['confidence'] as double).compareTo(a['confidence'] as double));
 
-    // ENHANCED quality filtering
-    final qualityFiltered = <Map<String, dynamic>>[];
-    for (final det in potentialDetections) {
-      final conf = det['confidence'] as double;
-      final area = det['area'] as double;
-
-      // Stricter quality requirements
-      if (conf >= 0.9) {
-        // Very high confidence - accept
-        qualityFiltered.add(det);
-      } else if (conf >= 0.8) {
-        // High confidence - require good size
-        if (area >= 800) {
-          qualityFiltered.add(det);
-        }
-      } else if (conf >= confidenceThreshold + 0.1) {
-        // Above threshold with margin - strict requirements
-        if (area >= 1200) {
-          qualityFiltered.add(det);
-        }
-      }
-    }
-
-    // Limit to best detections
-    final limitedDetections = qualityFiltered.take(maxDetections).toList();
+    final limitedDetections = potentialDetections.take(maxDetections).toList();
     if (_enableDetailedLogging) {
       developer.log(
-          '📋 Quality filtered to ${qualityFiltered.length}, limited to ${limitedDetections.length}');
+          '📋 Limited to ${limitedDetections.length} detections');
     }
 
-    // Convert to Detection objects with proper scaling
     for (final det in limitedDetections) {
       final detection = _createDetection(
           det['x1'] as double,
@@ -513,19 +501,18 @@ class OnnxInference {
           det['classId'] as int,
           originalWidth,
           originalHeight,
-          640 // Input size
-          );
+          640);
       detections.add(detection);
       if (_enableDetailedLogging) {
         developer.log(
-            '✅ HIGH-QUALITY detection: ${_classNames[det['classId'] as int]} (${((det['confidence'] as double) * 100).toStringAsFixed(1)}%)');
+            '✅ Detection: ${_classNames[det['classId'] as int]} (${((det['confidence'] as double) * 100).toStringAsFixed(1)}%)');
       }
     }
 
-    final result = _applyEnhancedNMS(detections, 0.3);
+    final result = _applyEnhancedNMS(detections, 0.45);
     if (_enableDetailedLogging) {
       developer.log(
-          '📋 Final result: ${result.length} detections after Enhanced NMS');
+          '📋 Final result: ${result.length} detections after NMS');
     }
 
     return result;
