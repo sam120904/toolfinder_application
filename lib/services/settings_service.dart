@@ -7,7 +7,7 @@ class SettingsService {
   SettingsService._internal();
 
   SharedPreferences? _prefs;
-  
+
   // Default settings
   double _confidenceThreshold = 0.5;
   Map<String, bool> _enabledObjects = {
@@ -37,22 +37,24 @@ class SettingsService {
 
   Future<void> _loadSettings() async {
     if (_prefs == null) return;
-    
+
     // Load confidence threshold
     _confidenceThreshold = _prefs!.getDouble('confidence_threshold') ?? 0.5;
-    
+
     // Load enabled objects
     for (final key in _enabledObjects.keys) {
       _enabledObjects[key] = _prefs!.getBool('enabled_$key') ?? true;
     }
-    
-    developer.log('📋 Settings loaded: confidence=${(_confidenceThreshold * 100).toInt()}%, objects=$_enabledObjects');
+
+    developer.log(
+        '📋 Settings loaded: confidence=${(_confidenceThreshold * 100).toInt()}%, objects=$_enabledObjects');
   }
 
   Future<void> setConfidenceThreshold(double threshold) async {
     _confidenceThreshold = threshold.clamp(0.0, 1.0);
     await _prefs?.setDouble('confidence_threshold', _confidenceThreshold);
-    developer.log('💾 Confidence threshold saved: ${(_confidenceThreshold * 100).toInt()}%');
+    developer.log(
+        '💾 Confidence threshold saved: ${(_confidenceThreshold * 100).toInt()}%');
   }
 
   Future<void> setObjectEnabled(String objectName, bool enabled) async {
@@ -127,3 +129,4 @@ class SettingsService {
     }
   }
 }
+
