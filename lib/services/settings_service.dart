@@ -11,9 +11,13 @@ class SettingsService {
   // Default settings
   double _confidenceThreshold = 0.5;
   Map<String, bool> _enabledObjects = {
-    'FireExtinguisher': true,
-    'ToolBox': true,
     'OxygenTank': true,
+    'NitrogenTank': true,
+    'FirstAidBox': true,
+    'FireAlarm': true,
+    'SafetySwitchPanel': true,
+    'EmergencyPhone': true,
+    'FireExtinguisher': true,
   };
 
   // Getters
@@ -62,29 +66,41 @@ class SettingsService {
   Future<void> resetToDefaults() async {
     _confidenceThreshold = 0.5;
     _enabledObjects = {
-      'FireExtinguisher': true,
-      'ToolBox': true,
       'OxygenTank': true,
+      'NitrogenTank': true,
+      'FirstAidBox': true,
+      'FireAlarm': true,
+      'SafetySwitchPanel': true,
+      'EmergencyPhone': true,
+      'FireExtinguisher': true,
     };
-    
+
     // Clear all settings from preferences
     await _prefs?.remove('confidence_threshold');
     for (final key in _enabledObjects.keys) {
       await _prefs?.remove('enabled_$key');
     }
-    
+
     developer.log('🔄 Settings reset to defaults');
   }
 
   // Helper methods for UI
   String getDisplayName(String objectName) {
     switch (objectName) {
-      case 'FireExtinguisher':
-        return 'Fire Extinguisher';
-      case 'ToolBox':
-        return 'Tool Box';
       case 'OxygenTank':
         return 'Oxygen Tank';
+      case 'NitrogenTank':
+        return 'Nitrogen Tank';
+      case 'FirstAidBox':
+        return 'First Aid Box';
+      case 'FireAlarm':
+        return 'Fire Alarm';
+      case 'SafetySwitchPanel':
+        return 'Safety Switch Panel';
+      case 'EmergencyPhone':
+        return 'Emergency Phone';
+      case 'FireExtinguisher':
+        return 'Fire Extinguisher';
       default:
         return objectName;
     }
@@ -92,12 +108,20 @@ class SettingsService {
 
   String getObjectIcon(String objectName) {
     switch (objectName) {
-      case 'FireExtinguisher':
-        return '🧯';
-      case 'ToolBox':
-        return '🧰';
       case 'OxygenTank':
         return '🫁';
+      case 'NitrogenTank':
+        return '💨';
+      case 'FirstAidBox':
+        return '🏥';
+      case 'FireAlarm':
+        return '🚨';
+      case 'SafetySwitchPanel':
+        return '⚡';
+      case 'EmergencyPhone':
+        return '📞';
+      case 'FireExtinguisher':
+        return '🧯';
       default:
         return '📦';
     }
